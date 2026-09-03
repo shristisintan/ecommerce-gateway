@@ -5,7 +5,7 @@ import {
 
 import { AppError } from "../utils/AppError";
 import { asyncHandler } from "../utils/asyncHandler";
-
+import { env } from "../config/env";
 import * as paymentService from "../services/payment.service";
 
 const getBuyerId = (
@@ -114,3 +114,41 @@ export const checkEsewaStatus =
       });
     }
   );
+
+  export const esewaCallback =
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    try {
+      const data =
+        typeof req.query.data ===
+        "string"
+          ? req.query.data
+          : null;
+
+      if (!data) {
+        return res.redirect(
+          `${env.CLIENT_URL}/payment/failure?reason=missing_payment_data`
+        );
+      }
+
+      await paymentService
+        .verifyEsewaPayment(
+          data
+        );
+
+      return res.redirect(
+        `${env.CLIENT_URL}/payment/success?verified=true`
+      );
+    } catch (error) {
+      console.error(
+        "eSewa callback error:",
+        error
+      );
+
+      return res.redirect(
+        `${env.CLIENT_URL}/payment/failure?reason=verification_failed`
+      );
+    }
+  };
