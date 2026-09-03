@@ -1,14 +1,11 @@
 import crypto from "node:crypto";
-import jwt, { JwtPayload, SignOptions } from "jsonwebtoken";
+import jwt, {
+  JwtPayload,
+  SignOptions,
+} from "jsonwebtoken";
 
 import { env } from "../config/env";
-import { UserRole } from "../models/user.model";
-
-export interface AccessTokenPayload {
-  userId: string;
-  role: UserRole;
-  tenantId: string | null;
-}
+import type { AuthUser } from "../types/auth";
 
 export interface RefreshTokenPayload {
   userId: string;
@@ -16,7 +13,7 @@ export interface RefreshTokenPayload {
 }
 
 export const generateAccessToken = (
-  payload: AccessTokenPayload
+  payload: AuthUser
 ): string => {
   const options: SignOptions = {
     expiresIn:
@@ -47,20 +44,40 @@ export const generateRefreshToken = (
 
 export const verifyAccessToken = (
   token: string
-): JwtPayload => {
-  return jwt.verify(
+): AuthUser & JwtPayload => {
+  const decoded = jwt.verify(
     token,
     env.JWT_ACCESS_SECRET
-  ) as JwtPayload;
+  );
+
+  if (
+    typeof decoded === "string" ||
+    !decoded.userId ||
+    !decoded.role
+  ) {
+    throw new Error("Invalid access token");
+  }
+
+  return decoded as AuthUser & JwtPayload;
 };
 
 export const verifyRefreshToken = (
   token: string
-): JwtPayload => {
-  return jwt.verify(
+): RefreshTokenPayload & JwtPayload => {
+  const decoded = jwt.verify(
     token,
     env.JWT_REFRESH_SECRET
-  ) as JwtPayload;
+  );
+
+  if (
+    typeof decoded === "string" ||
+    !decoded.userId ||
+    !decoded.tokenId
+  ) {
+    throw new Error("Invalid refresh token");
+  }
+
+  return decoded as RefreshTokenPayload & JwtPayload;
 };
 
 export const hashToken = (
@@ -74,4 +91,20 @@ export const hashToken = (
 
 export const generateTokenId = (): string => {
   return crypto.randomUUID();
+};
+
+export const getTokenExpiry = (
+  token: string
+): Date => {
+  const decoded = jwt.decode(token);
+
+  if (
+    !decoded ||
+    typeof decoded === "string" ||
+    !decoded.exp
+  ) {
+    throw new Error("Token expiration unavailable");
+  }
+
+  return new Date(decoded.exp * 1000);
 };
