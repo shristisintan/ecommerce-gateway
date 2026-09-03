@@ -5,6 +5,7 @@ import categoryRoutes from "./category.routes";
 import productRoutes from "./product.routes";
 import cartRoutes from "./cart.routes";
 import orderRoutes from "./order.routes";
+import paymentRoutes from "./payment.routes";
 
 const router = Router();
 
@@ -27,6 +28,11 @@ router.use(
 router.use(
   "/orders",
   orderRoutes
+);
+
+router.use(
+  "/payments",
+  paymentRoutes
 );
 
 router.use("/auth", authRoutes);

@@ -8,24 +8,38 @@ const envSchema = z.object({
     .enum(["development", "production", "test"])
     .default("development"),
 
-  PORT: z.coerce.number().positive().default(5000),
+  PORT: z.coerce
+    .number()
+    .positive()
+    .default(5000),
 
-  MONGODB_URI: z.string().min(1, "MONGODB_URI is required"),
+  MONGODB_URI: z
+    .string()
+    .min(1, "MONGODB_URI is required"),
 
-  CLIENT_URL: z.string().url("CLIENT_URL must be a valid URL"),
-  DNS_SERVERS: z.string().optional(),
+  CLIENT_URL: z
+    .string()
+    .url("CLIENT_URL must be a valid URL"),
+
+  DNS_SERVERS: z
+    .string()
+    .optional(),
 
   JWT_ACCESS_SECRET: z
     .string()
-    .min(32, "JWT_ACCESS_SECRET must contain at least 32 characters"),
+    .min(32),
 
   JWT_REFRESH_SECRET: z
     .string()
-    .min(32, "JWT_REFRESH_SECRET must contain at least 32 characters"),
+    .min(32),
 
-  JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
+  JWT_ACCESS_EXPIRES_IN: z
+    .string()
+    .default("15m"),
 
-  JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
+  JWT_REFRESH_EXPIRES_IN: z
+    .string()
+    .default("7d"),
 
   BCRYPT_SALT_ROUNDS: z.coerce
     .number()
@@ -34,18 +48,59 @@ const envSchema = z.object({
     .max(15)
     .default(12),
 
-    ADMIN_NAME: z.string().optional(),
-    ADMIN_EMAIL: z.string().email().optional(),
-    ADMIN_PASSWORD: z.string().min(8).optional(),
+  ADMIN_NAME: z
+    .string()
+    .optional(),
+
+  ADMIN_EMAIL: z
+    .string()
+    .email()
+    .optional(),
+
+  ADMIN_PASSWORD: z
+    .string()
+    .min(8)
+    .optional(),
+
+  ESEWA_PRODUCT_CODE: z
+    .string()
+    .min(1),
+
+  ESEWA_SECRET_KEY: z
+    .string()
+    .min(1),
+
+  ESEWA_PAYMENT_URL: z
+    .string()
+    .url(),
+
+  ESEWA_STATUS_URL: z
+    .string()
+    .url(),
+
+  ESEWA_SUCCESS_URL: z
+    .string()
+    .url(),
+
+  ESEWA_FAILURE_URL: z
+    .string()
+    .url(),
 });
 
-const parsedEnv = envSchema.safeParse(process.env);
+const parsedEnv =
+  envSchema.safeParse(process.env);
 
 if (!parsedEnv.success) {
-  console.error("Invalid environment configuration:");
-  console.error(parsedEnv.error.flatten().fieldErrors);
+  console.error(
+    "Invalid environment configuration:"
+  );
+
+  console.error(
+    parsedEnv.error.flatten().fieldErrors
+  );
 
   process.exit(1);
 }
 
-export const env = parsedEnv.data;
+export const env =
+  parsedEnv.data;
