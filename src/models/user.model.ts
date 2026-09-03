@@ -1,15 +1,40 @@
 import bcrypt from "bcrypt";
-import { Schema, model } from "mongoose";
+import {
+  HydratedDocument,
+  Model,
+  Schema,
+  Types,
+  model,
+} from "mongoose";
+
 import { env } from "../config/env";
 
 export type UserRole = "ADMIN" | "MERCHANT" | "BUYER";
 
-const userSchema = new Schema(
+export interface IUser {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  tenantId?: Types.ObjectId | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IUserMethods {
+  comparePassword(candidatePassword: string): Promise<boolean>;
+}
+
+type UserModel = Model<IUser, {}, IUserMethods>;
+
+const userSchema = new Schema<IUser, UserModel, IUserMethods>(
   {
     name: {
       type: String,
       required: true,
       trim: true,
+      maxlength: 120,
     },
 
     email: {
@@ -29,8 +54,8 @@ const userSchema = new Schema(
     role: {
       type: String,
       enum: ["ADMIN", "MERCHANT", "BUYER"],
-      default: "BUYER",
       required: true,
+      default: "BUYER",
     },
 
     tenantId: {
@@ -57,7 +82,9 @@ userSchema.index({
 });
 
 userSchema.pre("save", async function () {
-  if (!this.isModified("password")) return;
+  if (!this.isModified("password")) {
+    return;
+  }
 
   this.password = await bcrypt.hash(
     this.password,
@@ -71,4 +98,12 @@ userSchema.methods.comparePassword = async function (
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-export const User = model("User", userSchema);
+export type UserDocument = HydratedDocument<
+  IUser,
+  IUserMethods
+>;
+
+export const User = model<IUser, UserModel>(
+  "User",
+  userSchema
+);
