@@ -16,24 +16,25 @@ export interface ICart {
   updatedAt: Date;
 }
 
-const cartItemSchema = new Schema<ICartItem>(
-  {
-    productId: {
-      type: Schema.Types.ObjectId,
-      ref: "Product",
-      required: true,
-    },
+const cartItemSchema =
+  new Schema<ICartItem>(
+    {
+      productId: {
+        type: Schema.Types.ObjectId,
+        ref: "Product",
+        required: true,
+      },
 
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1,
+      quantity: {
+        type: Number,
+        required: true,
+        min: 1,
+      },
     },
-  },
-  {
-    _id: false,
-  }
-);
+    {
+      _id: false,
+    }
+  );
 
 const cartSchema = new Schema<ICart>(
   {
@@ -53,10 +54,6 @@ const cartSchema = new Schema<ICart>(
     timestamps: true,
   }
 );
-
-cartSchema.index({
-  buyerId: 1,
-});
 
 export const Cart = model<ICart>(
   "Cart",

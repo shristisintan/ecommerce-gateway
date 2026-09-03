@@ -10,17 +10,16 @@ export const addToCartSchema = z.object({
       .number()
       .int()
       .min(1)
-      .max(100),
+      .max(1000),
   }),
 });
 
-export const updateCartItemSchema =
-  z.object({
-    body: z.object({
-      quantity: z.coerce
-        .number()
-        .int()
-        .min(1)
-        .max(100),
-    }),
-  });
+export const updateCartItemSchema = z.object({
+  body: z.object({
+    quantity: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1000),
+  }),
+});
