@@ -22,6 +22,12 @@ interface OrderQuery {
   limit?: string;
 }
 
+interface MerchantOrderQuery
+  extends OrderQuery {
+  orderStatus?: string;
+  paymentStatus?: string;
+}
+
 const validateObjectId = (
   id: string,
   message: string
@@ -361,4 +367,218 @@ export const getOrderById =
     }
 
     return order;
+  };
+
+  /* =====================================================
+   MERCHANT ORDERS
+===================================================== */
+
+export const getMerchantOrders =
+  async (
+    tenantId: string,
+    query: MerchantOrderQuery
+  ) => {
+    validateObjectId(
+      tenantId,
+      "Invalid tenant ID"
+    );
+
+    const parsedPage =
+      Number.parseInt(
+        query.page ?? "1",
+        10
+      );
+
+    const parsedLimit =
+      Number.parseInt(
+        query.limit ?? "10",
+        10
+      );
+
+    const page =
+      Number.isNaN(
+        parsedPage
+      ) ||
+      parsedPage < 1
+        ? 1
+        : parsedPage;
+
+    const limit =
+      Math.min(
+        Number.isNaN(
+          parsedLimit
+        ) ||
+          parsedLimit < 1
+          ? 10
+          : parsedLimit,
+        50
+      );
+
+    const allowedOrderStatuses = [
+      "PENDING_PAYMENT",
+      "PAID",
+      "PROCESSING",
+      "COMPLETED",
+      "CANCELLED",
+      "PAYMENT_FAILED",
+    ];
+
+    const allowedPaymentStatuses = [
+      "PENDING",
+      "PAID",
+      "FAILED",
+    ];
+
+    if (
+      query.orderStatus &&
+      !allowedOrderStatuses.includes(
+        query.orderStatus
+      )
+    ) {
+      throw new AppError(
+        400,
+        "Invalid order status"
+      );
+    }
+
+    if (
+      query.paymentStatus &&
+      !allowedPaymentStatuses.includes(
+        query.paymentStatus
+      )
+    ) {
+      throw new AppError(
+        400,
+        "Invalid payment status"
+      );
+    }
+
+    /*
+     * Critical multi-tenant filter.
+     *
+     * Merchant only receives orders
+     * containing their tenantId.
+     */
+    const filter: Record<
+      string,
+      unknown
+    > = {
+      "items.tenantId":
+        tenantId,
+    };
+
+    if (
+      query.orderStatus
+    ) {
+      filter.orderStatus =
+        query.orderStatus;
+    }
+
+    if (
+      query.paymentStatus
+    ) {
+      filter.paymentStatus =
+        query.paymentStatus;
+    }
+
+    const skip =
+      (page - 1) *
+      limit;
+
+    const [
+      rawOrders,
+      total,
+    ] =
+      await Promise.all([
+        Order.find(
+          filter
+        )
+          .populate(
+            "buyerId",
+            "name email"
+          )
+          .sort({
+            createdAt: -1,
+          })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+
+        Order.countDocuments(
+          filter
+        ),
+      ]);
+
+    /*
+     * IMPORTANT SECURITY:
+     *
+     * An order can contain products
+     * belonging to multiple merchants.
+     *
+     * Therefore remove other
+     * merchants' items before sending
+     * the order to this merchant.
+     */
+    const orders =
+      rawOrders.map(
+        (order) => {
+          const merchantItems =
+            order.items.filter(
+              (item) =>
+                item.tenantId
+                  .toString() ===
+                tenantId
+            );
+
+          const merchantTotal =
+            Number(
+              merchantItems
+                .reduce(
+                  (
+                    sum,
+                    item
+                  ) =>
+                    sum +
+                    item.subtotal,
+                  0
+                )
+                .toFixed(2)
+            );
+
+          return {
+            ...order,
+
+            /*
+             * Only this merchant's
+             * products.
+             */
+            items:
+              merchantItems,
+
+            /*
+             * Seller-specific order
+             * amount.
+             */
+            merchantTotal,
+          };
+        }
+      );
+
+    return {
+      orders,
+
+      pagination: {
+        page,
+        limit,
+        total,
+
+        totalPages:
+          total === 0
+            ? 0
+            : Math.ceil(
+                total /
+                  limit
+              ),
+      },
+    };
   };

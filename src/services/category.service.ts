@@ -1,7 +1,14 @@
-import { Types } from "mongoose";
+import {
+  Types,
+} from "mongoose";
 
-import { Category } from "../models/category.model";
-import { AppError } from "../utils/AppError";
+import {
+  Category,
+} from "../models/category.model";
+
+import {
+  AppError,
+} from "../utils/AppError";
 
 interface CreateCategoryInput {
   name: string;
@@ -14,74 +21,165 @@ interface UpdateCategoryInput {
   isActive?: boolean;
 }
 
-export const createCategory = async (
-  input: CreateCategoryInput
-) => {
-  const existing = await Category.findOne({
-    slug: input.slug,
-  });
+/* =====================================================
+   CREATE CATEGORY
+===================================================== */
 
-  if (existing) {
-    throw new AppError(
-      409,
-      "A category with this slug already exists"
+export const createCategory =
+  async (
+    input: CreateCategoryInput
+  ) => {
+    const existing =
+      await Category.findOne({
+        slug: input.slug,
+      });
+
+    if (existing) {
+      throw new AppError(
+        409,
+        "A category with this slug already exists"
+      );
+    }
+
+    return Category.create(
+      input
     );
-  }
+  };
 
-  return Category.create(input);
-};
+/* =====================================================
+   PUBLIC CATEGORIES
 
-export const getCategories = async () => {
-  return Category.find({
-    isActive: true,
-  }).sort({ name: 1 });
-};
+   Buyers / merchants only need
+   active categories.
+===================================================== */
 
-export const updateCategory = async (
-  id: string,
-  input: UpdateCategoryInput
-) => {
-  if (!Types.ObjectId.isValid(id)) {
-    throw new AppError(400, "Invalid category ID");
-  }
+export const getCategories =
+  async () => {
+    return Category.find({
+      isActive: true,
+    }).sort({
+      name: 1,
+    });
+  };
 
-  const category = await Category.findByIdAndUpdate(
-    id,
-    input,
-    {
-      new: true,
-      runValidators: true,
+/* =====================================================
+   ADMIN CATEGORIES
+
+   Admin needs both active
+   and inactive categories.
+===================================================== */
+
+export const getAdminCategories =
+  async () => {
+    return Category.find({})
+      .sort({
+        createdAt: -1,
+      });
+  };
+
+/* =====================================================
+   UPDATE CATEGORY
+===================================================== */
+
+export const updateCategory =
+  async (
+    id: string,
+    input: UpdateCategoryInput
+  ) => {
+    if (
+      !Types.ObjectId.isValid(
+        id
+      )
+    ) {
+      throw new AppError(
+        400,
+        "Invalid category ID"
+      );
     }
-  );
 
-  if (!category) {
-    throw new AppError(404, "Category not found");
-  }
+    /*
+     * If slug is being changed,
+     * make sure another category
+     * does not already use it.
+     */
+    if (input.slug) {
+      const existing =
+        await Category.findOne({
+          slug: input.slug,
 
-  return category;
-};
+          _id: {
+            $ne: id,
+          },
+        });
 
-export const deleteCategory = async (
-  id: string
-) => {
-  if (!Types.ObjectId.isValid(id)) {
-    throw new AppError(400, "Invalid category ID");
-  }
-
-  // Soft delete
-  const category = await Category.findByIdAndUpdate(
-    id,
-    {
-      isActive: false,
-    },
-    {
-      new: true,
+      if (existing) {
+        throw new AppError(
+          409,
+          "A category with this slug already exists"
+        );
+      }
     }
-  );
 
-  if (!category) {
-    throw new AppError(404, "Category not found");
-  }
+    const category =
+      await Category
+        .findByIdAndUpdate(
+          id,
+          input,
+          {
+            new: true,
+            runValidators: true,
+          }
+        );
 
-  return category;
-};
+    if (!category) {
+      throw new AppError(
+        404,
+        "Category not found"
+      );
+    }
+
+    return category;
+  };
+
+/* =====================================================
+   DEACTIVATE CATEGORY
+
+   Soft delete only.
+===================================================== */
+
+export const deleteCategory =
+  async (
+    id: string
+  ) => {
+    if (
+      !Types.ObjectId.isValid(
+        id
+      )
+    ) {
+      throw new AppError(
+        400,
+        "Invalid category ID"
+      );
+    }
+
+    const category =
+      await Category
+        .findByIdAndUpdate(
+          id,
+          {
+            isActive: false,
+          },
+          {
+            new: true,
+          }
+        );
+
+    if (!category) {
+      throw new AppError(
+        404,
+        "Category not found"
+      );
+    }
+
+    return category;
+  };

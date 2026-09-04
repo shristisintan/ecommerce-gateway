@@ -2,13 +2,22 @@ import { Router } from "express";
 
 import {
   createOrder,
+  getMerchantOrders,
   getMyOrders,
   getOrderById,
 } from "../controllers/order.controller";
 
-import { authenticate } from "../middleware/auth.middleware";
-import { authorize } from "../middleware/authorize.middleware";
-import { validate } from "../middleware/validate.middleware";
+import {
+  authenticate,
+} from "../middleware/auth.middleware";
+
+import {
+  authorize,
+} from "../middleware/authorize.middleware";
+
+import {
+  validate,
+} from "../middleware/validate.middleware";
 
 import {
   createOrderSchema,
@@ -17,8 +26,26 @@ import {
 const router = Router();
 
 /*
- * All routes below are Buyer only.
+ * =====================================================
+ * MERCHANT
+ * =====================================================
+ *
+ * IMPORTANT:
+ * Keep this route BEFORE the Buyer-only middleware.
  */
+router.get(
+  "/merchant/mine",
+  authenticate,
+  authorize("MERCHANT"),
+  getMerchantOrders
+);
+
+/*
+ * =====================================================
+ * BUYER
+ * =====================================================
+ */
+
 router.use(
   authenticate,
   authorize("BUYER")

@@ -3,8 +3,13 @@ import {
   Response,
 } from "express";
 
-import { AppError } from "../utils/AppError";
-import { asyncHandler } from "../utils/asyncHandler";
+import {
+  AppError,
+} from "../utils/AppError";
+
+import {
+  asyncHandler,
+} from "../utils/asyncHandler";
 
 import * as orderService from "../services/order.service";
 
@@ -19,6 +24,19 @@ const getBuyerId = (
   }
 
   return req.auth.userId;
+};
+
+const getMerchantTenantId = (
+  req: Request
+): string => {
+  if (!req.auth?.tenantId) {
+    throw new AppError(
+      403,
+      "Merchant tenant is required"
+    );
+  }
+
+  return req.auth.tenantId;
 };
 
 const getParam = (
@@ -49,6 +67,10 @@ const queryValue = (
     : undefined;
 };
 
+/* =====================================================
+   CREATE ORDER
+===================================================== */
+
 export const createOrder =
   asyncHandler(
     async (
@@ -63,12 +85,19 @@ export const createOrder =
 
       res.status(201).json({
         success: true,
+
         message:
           "Order created successfully",
-        data: order,
+
+        data:
+          order,
       });
     }
   );
+
+/* =====================================================
+   BUYER ORDERS
+===================================================== */
 
 export const getMyOrders =
   asyncHandler(
@@ -104,6 +133,63 @@ export const getMyOrders =
     }
   );
 
+/* =====================================================
+   MERCHANT ORDERS
+===================================================== */
+
+export const getMerchantOrders =
+  asyncHandler(
+    async (
+      req: Request,
+      res: Response
+    ) => {
+      const result =
+        await orderService
+          .getMerchantOrders(
+            getMerchantTenantId(
+              req
+            ),
+            {
+              page:
+                queryValue(
+                  req.query.page
+                ),
+
+              limit:
+                queryValue(
+                  req.query.limit
+                ),
+
+              orderStatus:
+                queryValue(
+                  req.query
+                    .orderStatus
+                ),
+
+              paymentStatus:
+                queryValue(
+                  req.query
+                    .paymentStatus
+                ),
+            }
+          );
+
+      res.status(200).json({
+        success: true,
+
+        data:
+          result.orders,
+
+        pagination:
+          result.pagination,
+      });
+    }
+  );
+
+/* =====================================================
+   BUYER ORDER DETAILS
+===================================================== */
+
 export const getOrderById =
   asyncHandler(
     async (
@@ -116,10 +202,11 @@ export const getOrderById =
         );
 
       const order =
-        await orderService.getOrderById(
-          orderId,
-          getBuyerId(req)
-        );
+        await orderService
+          .getOrderById(
+            orderId,
+            getBuyerId(req)
+          );
 
       res.status(200).json({
         success: true,
